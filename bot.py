@@ -3,14 +3,16 @@ import anthropic
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 
-GROUP_ID = -1001412965575  # замени на свой
-TOPIC_ID = 205             # замени на свой
+GROUP_ID = -1001412965575
+TOPIC_ID = 205
+ALLOWED_USER_ID = 555619608
 
 async def handle_message(update, context):
     if not update.message:
         return
-
     if update.message.chat.type != "private":
+        return
+    if update.message.from_user.id != ALLOWED_USER_ID:
         return
 
     phrase = update.message.text.strip() if update.message.text else None
