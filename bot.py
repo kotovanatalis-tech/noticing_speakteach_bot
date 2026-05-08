@@ -3,12 +3,12 @@ import anthropic
 from telegram import Update
 from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 
-ANTHROPIC_CLIENT = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
-
 async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     phrase = update.message.text.strip()
     
-    message = ANTHROPIC_CLIENT.messages.create(
+    client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+    
+    message = client.messages.create(
         model="claude-opus-4-5",
         max_tokens=1024,
         messages=[{
