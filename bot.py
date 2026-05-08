@@ -10,6 +10,10 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
     if not update.message:
         return
     
+    # Отвечаем ТОЛЬКО на личные сообщения
+    if update.message.chat.type != "private":
+        return
+    
     phrase = update.message.text.strip() if update.message.text else None
     photo = update.message.photo[-1] if update.message.photo else None
     caption = update.message.caption.strip() if update.message.caption else None
@@ -59,12 +63,4 @@ The phrase to explain: {target}"""
             chat_id=GROUP_ID,
             message_thread_id=TOPIC_ID,
             text=text,
-            parse_mode="HTML"
-        )
-    
-    await update.message.reply_text("✅ Отправлено в группу!")
-
-app = ApplicationBuilder().token(os.environ["TELEGRAM_TOKEN"]).build()
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-app.add_handler(MessageHandler(filters.PHOTO, handle_message))
-app.run_polling()
+            parse_
