@@ -40,43 +40,9 @@ async def handle_message(update, context):
             "content": (
                 f"You are an English vocabulary helper. "
                 f"The user gives you a word or phrase to explain. "
-                f"You MUST follow this format EXACTLY. Do NOT write placeholder text - write REAL sentences.\n\n"
+                f"You MUST follow this format EXACTLY. Do NOT write placeholder text - write REAL sentences. "
+                f"Use the exact HTML tags as shown — they will render in Telegram.\n\n"
                 f"Format:\n"
                 f"\"[REAL example sentence where {target} appears, wrapped as <u><b>{target}</b></u>]\"\n\n"
-                f"Definition: [clear definition in English]\n\n"
-                f"Russian equivalent: [closest equivalent in Russian — a word, phrase or short explanation]\n\n"
-                f"Examples:\n"
-                f"1. [REAL sentence with <u><b>{target}</b></u>]\n"
-                f"2. [REAL sentence with <u><b>{target}</b></u>]\n"
-                f"3. [REAL sentence with <u><b>{target}</b></u>]\n\n"
-                f"The phrase to explain: {target}"
-                + (f"\nContext hint (use this to give the correct definition, but do NOT mention it in your response): {clarification}" if clarification else "")
-            )
-        }]
-    )
-    text = message.content[0].text
-
-    if photo:
-        file = await context.bot.get_file(photo.file_id)
-        photo_bytes = await file.download_as_bytearray()
-        await context.bot.send_photo(
-            chat_id=GROUP_ID,
-            message_thread_id=TOPIC_ID,
-            photo=bytes(photo_bytes),
-            caption=text,
-            parse_mode="HTML"
-        )
-    else:
-        await context.bot.send_message(
-            chat_id=GROUP_ID,
-            message_thread_id=TOPIC_ID,
-            text=text,
-            parse_mode="HTML"
-        )
-
-    await update.message.reply_text("✅ Отправлено в группу!")
-
-app = ApplicationBuilder().token(os.environ["TELEGRAM_TOKEN"]).build()
-app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
-app.add_handler(MessageHandler(filters.PHOTO, handle_message))
-app.run_polling()
+                f"<b>💡Definition:</b> [clear definition in English]\n\n"
+                f"<b>🤓Russian
