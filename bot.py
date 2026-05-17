@@ -25,7 +25,6 @@ async def handle_message(update, context):
         await update.message.reply_text("Напиши фразу или отправь фото с подписью!")
         return
 
-    # Извлекаем уточнение в скобках если есть
     clarification = ""
     match = re.search(r'\[([^\]]+)\]', target)
     if match:
@@ -41,10 +40,11 @@ async def handle_message(update, context):
             "content": (
                 f"You are an English vocabulary helper. "
                 f"The user gives you a word or phrase to explain. "
-                f"You MUST follow this format EXACTLY. Do NOT write placeholder text like '[example sentence]' - write REAL sentences.\n\n"
+                f"You MUST follow this format EXACTLY. Do NOT write placeholder text - write REAL sentences.\n\n"
                 f"Format:\n"
                 f"\"[REAL example sentence where {target} appears, wrapped as <u><b>{target}</b></u>]\"\n\n"
                 f"Definition: [clear definition in English]\n\n"
+                f"Russian equivalent: [closest equivalent in Russian — a word, phrase or short explanation]\n\n"
                 f"Examples:\n"
                 f"1. [REAL sentence with <u><b>{target}</b></u>]\n"
                 f"2. [REAL sentence with <u><b>{target}</b></u>]\n"
