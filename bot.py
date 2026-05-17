@@ -1,29 +1,19 @@
 import os
 import re
 import anthropic
-from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import ApplicationBuilder, MessageHandler, CallbackQueryHandler, filters, ContextTypes
+from telegram import Update
+from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
 
-# ← вставьте Telegram ID разрешённых пользователей (Шаг 2 инструкции)
-ALLOWED_USERS = [555619608, 244153970]
-
-# ← вставьте данные ваших групп (Шаг 6 инструкции)
-GROUPS = {
-    "Группа SpeakTeach": {"chat_id": -1001412965575, "thread_id": 205},
-    "Группа test": {"chat_id": -1003971082024, "thread_id": 2},
-}
-
-# Временное хранилище пока пользователь выбирает группу
-pending = {}
+GROUP_ID = -1001412965575
+TOPIC_ID = 205
+ALLOWED_USER_ID = 555619608
 
 async def handle_message(update, context):
-    if update.message:
-        print(f"chat_id: {update.message.chat.id}, thread_id: {update.message.message_thread_id}")
     if not update.message:
         return
     if update.message.chat.type != "private":
         return
-    if update.message.from_user.id not in ALLOWED_USERS:
+    if update.message.from_user.id != ALLOWED_USER_ID:
         return
 
     phrase = update.message.text.strip() if update.message.text else None
@@ -69,53 +59,27 @@ async def handle_message(update, context):
     )
     text = message.content[0].text
 
-    # Сохраняем данные пока пользователь выбирает группу
-    user_id = update.message.from_user.id
-    pending[user_id] = {
-        "text": text,
-        "photo_id": photo.file_id if photo else None
-    }
-
-    # Показываем кнопки выбора группы
-    keyboard = [[InlineKeyboardButton(name, callback_data=name)] for name in GROUPS]
-    await update.message.reply_text(
-        "Куда отправить?",
-        reply_markup=InlineKeyboardMarkup(keyboard)
-    )
-
-async def handle_choice(update, context):
-    query = update.callback_query
-    await query.answer()
-
-    user_id = query.from_user.id
-    if user_id not in pending:
-        await query.edit_message_text("Что-то пошло не так, попробуй снова.")
-        return
-
-    group_name = query.data
-    group = GROUPS[group_name]
-    data = pending.pop(user_id)
-
-    if data["photo_id"]:
+    if photo:
+        file = await context.bot.get_file(photo.file_id)
+        photo_bytes = await file.download_as_bytearray()
         await context.bot.send_photo(
-            chat_id=group["chat_id"],
-            message_thread_id=group["thread_id"],
-            photo=data["photo_id"],
-            caption=data["text"],
+            chat_id=GROUP_ID,
+            message_thread_id=TOPIC_ID,
+            photo=bytes(photo_bytes),
+            caption=text,
             parse_mode="HTML"
         )
     else:
         await context.bot.send_message(
-            chat_id=group["chat_id"],
-            message_thread_id=group["thread_id"],
-            text=data["text"],
+            chat_id=GROUP_ID,
+            message_thread_id=TOPIC_ID,
+            text=text,
             parse_mode="HTML"
         )
 
-    await query.edit_message_text(f"✅ Отправлено в {group_name}!")
+    await update.message.reply_text("✅ Отправлено в группу!")
 
 app = ApplicationBuilder().token(os.environ["TELEGRAM_TOKEN"]).build()
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 app.add_handler(MessageHandler(filters.PHOTO, handle_message))
-app.add_handler(CallbackQueryHandler(handle_choice))
 app.run_polling()
