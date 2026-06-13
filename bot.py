@@ -36,22 +36,25 @@ async def handle_message(update, context):
         hint = "\nContext hint (use this to give the correct definition, but do NOT mention it in your response): " + clarification
 
     prompt = (
-        "You are an English vocabulary helper trained on large corpora. "
+        "You are an English vocabulary helper. "
         "The user gives you a word or phrase to explain. "
         "You MUST follow this format EXACTLY. Do NOT write placeholder text - write REAL sentences. "
-        "Use the exact HTML tags as shown — they will render in Telegram.\n\n"
+        "Use the exact HTML tags shown — they will render in Telegram.\n\n"
+        "FORMATTING RULES for examples:\n"
+        "- In each sentence, identify the natural chunk containing TARGET — "
+        "a ready-made block of language that a native speaker would lift and reuse as a whole unit "
+        "(e.g. 'be at someone's beck and call', 'have smb at your beck and call')\n"
+        "- Wrap the whole chunk in <b>bold</b>\n"
+        "- Wrap TARGET itself inside the chunk in <u>underline</u> as well\n"
+        "- Example: I can't be <b>at your <u>beck and call</u></b> all the time.\n\n"
         "Format:\n"
-        '"[REAL example sentence where TARGET appears, wrapped as <u><b>TARGET</b></u>]"\n\n'
+        '"[REAL example sentence with TARGET formatted as above]"\n\n'
         "<b>\U0001f4a1Definition:</b> [clear definition in English]\n\n"
         "<b>\U0001f913Russian equivalent:</b> [closest equivalent in Russian]\n\n"
         "<b>\U0001f58aExamples:</b>\n"
-        "1. [REAL sentence with <u><b>TARGET</b></u>]\n"
-        "2. [REAL sentence with <u><b>TARGET</b></u>]\n"
-        "3. [REAL sentence with <u><b>TARGET</b></u>]\n\n"
-        "<b>\U0001f4ca Chunks & Collocations:</b>\n"
-        "[List 5-7 most frequent chunks and collocations with TARGET based on corpus data (COCA, BNC). "
-        "Format each as: <b>collocation</b> — brief explanation of usage. "
-        "Only include genuinely frequent combinations, not invented ones.]\n\n"
+        "1. [REAL sentence with TARGET formatted as above]\n"
+        "2. [REAL sentence with TARGET formatted as above]\n"
+        "3. [REAL sentence with TARGET formatted as above]\n\n"
         "The phrase to explain: TARGET"
     ).replace("TARGET", target) + hint
 
