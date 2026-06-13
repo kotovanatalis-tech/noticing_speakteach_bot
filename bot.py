@@ -1,57 +1,165 @@
 import os
 import re
+import random
+import base64
 import anthropic
-from telegram import Update
-from telegram.ext import ApplicationBuilder, MessageHandler, filters, ContextTypes
+from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram.ext import ApplicationBuilder, MessageHandler, CommandHandler, CallbackQueryHandler, filters, ContextTypes
+
 GROUP_ID = -1001412965575
 TOPIC_ID = 205
 ALLOWED_USER_ID = 555619608
-async def handle_message(update, context):
-    if update.message:
-        print(f"chat_id: {update.message.chat.id}, thread_id: {update.message.message_thread_id}")
+
+GAP_FILL_GROUPS = {
+    "Teacherpreneurs": {
+        "chat_id": -1001742887248,
+        "thread_id": 379,
+        "doc_url": "https://docs.google.com/document/d/1mwsIsbwzmG4gRbBxznaHeiMTXJOy2SFJuIFMKErjUx4/edit?usp=sharing"
+    },
+    "Smart cookies": {
+        "chat_id": -1001757128185,
+        "thread_id": 411,
+        "doc_url": "https://docs.google.com/document/d/1zU4IcoV5WqsdAYvlkPtD9UBKfujes1jRImOewIWyWnc/edit?usp=sharing"
+    },
+    "Social butterflies": {
+        "chat_id": -1001170324655,
+        "thread_id": 118,
+        "doc_url": "https://docs.google.com/document/d/1Gsstk5lRXxt68D9v-StzlJ6ISBx6x21QeQ0piKCQbB4/edit?usp=sharing"
+    },
+}
+
+pending_gapfill = {}
+
+async def handle_gapfill_command(update, context):
     if not update.message:
         return
     if update.message.chat.type != "private":
         return
     if update.message.from_user.id != ALLOWED_USER_ID:
         return
-    phrase = update.message.text.strip() if update.message.text else None
+
+    await update.message.reply_text("Отправь фото со списком лексики!")
+    context.user_data["waiting_for_gapfill"] = True
+
+async def handle_message(update, context):
+    if not update.message:
+        return
+    if update.message.chat.type != "private":
+        return
+    if update.message.from_user.id != ALLOWED_USER_ID:
+        return
+
     photo = update.message.photo[-1] if update.message.photo else None
     caption = update.message.caption.strip() if update.message.caption else None
+    phrase = update.message.text.strip() if update.message.text else None
+
+    # GAP-FILL режим
+    if context.user_data.get("waiting_for_gapfill") and photo:
+        context.user_data["waiting_for_gapfill"] = False
+
+        await update.message.reply_text("⏳ Генерирую gap-fill...")
+
+        # Скачиваем фото и конвертируем в base64
+        file = await context.bot.get_file(photo.file_id)
+        photo_bytes = await file.download_as_bytearray()
+        image_b64 = base64.b64encode(photo_bytes).decode("utf-8")
+
+        client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
+
+        gapfill_prompt = (
+            "You are an English teacher assistant. "
+            "Look at this image with a list of vocabulary items. "
+            "Extract all vocabulary items that are written in BOLD. "
+            "Then create a gap-fill exercise:\n\n"
+            "RULES:\n"
+            "- Create one sentence per vocabulary item\n"
+            "- Replace the target word/phrase with ___\n"
+            "- Put the answer in a Telegram spoiler tag: <tg-spoiler>answer</tg-spoiler>\n"
+            "- Shuffle the sentences in random order (NOT the same order as in the image)\n"
+            "- Use ONLY HTML formatting, never markdown\n\n"
+            "Format each item exactly like this:\n"
+            "1. She was completely ___ after the long meeting. <tg-spoiler>worn out</tg-spoiler>\n\n"
+            "Output ONLY the numbered list, nothing else."
+        )
+
+        message = client.messages.create(
+            model="claude-opus-4-5",
+            max_tokens=2048,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {
+                        "type": "image",
+                        "source": {
+                            "type": "base64",
+                            "media_type": "image/jpeg",
+                            "data": image_b64
+                        }
+                    },
+                    {
+                        "type": "text",
+                        "text": gapfill_prompt
+                    }
+                ]
+            }]
+        )
+
+        gapfill_text = message.content[0].text
+
+        pending_gapfill[update.message.from_user.id] = gapfill_text
+
+        keyboard = [[InlineKeyboardButton(name, callback_data=f"gapfill_{name}")] for name in GAP_FILL_GROUPS]
+        await update.message.reply_text("Куда отправить gap-fill?", reply_markup=InlineKeyboardMarkup(keyboard))
+        return
+
+    # ОБЫЧНЫЙ режим
     target = phrase or caption
     if not target:
-        await update.message.reply_text("Напиши фразу или отправь фото с подписью!")
+        await update.message.reply_text("Напиши фразу или отправь фото с подписью!\nДля gap-fill напиши /gap_fill")
         return
+
     clarification = ""
     match = re.search(r'\[([^\]]+)\]', target)
     if match:
         clarification = match.group(1)
         target = target[:match.start()].strip()
+
     hint = ""
     if clarification:
         hint = "\nContext hint (use this to give the correct definition, but do NOT mention it in your response): " + clarification
+
     prompt = (
         "You are an English vocabulary helper. "
-        "The user gives you a word or phrase to explain. "
-        "You MUST follow this format EXACTLY. Do NOT write placeholder text - write REAL sentences. "
-        "Use the exact HTML tags as shown — they will render in Telegram.\n\n"
+        "You MUST use ONLY HTML tags for formatting: <b> for bold, <u> for underline. "
+        "NEVER use markdown symbols like **, __, *, or _. ONLY HTML tags. "
+        "The output will be sent via Telegram with parse_mode HTML. "
+        "You MUST follow this format EXACTLY. Do NOT write placeholder text - write REAL sentences.\n\n"
+        "FORMATTING RULES for examples:\n"
+        "- In each sentence, identify the natural chunk containing TARGET — "
+        "a ready-made block of language that a native speaker would lift and reuse as a whole unit\n"
+        "- Wrap the whole chunk in <b>bold</b>\n"
+        "- Wrap TARGET itself inside the chunk in <u>underline</u> as well\n"
+        "- Example: I can't be <b>at your <u>beck and call</u></b> all the time.\n\n"
         "Format:\n"
-        '"[REAL example sentence where TARGET appears, wrapped as <u><b>TARGET</b></u>]"\n\n'
+        '"[REAL example sentence with TARGET formatted as above]"\n\n'
         "<b>\U0001f4a1Definition:</b> [clear definition in English]\n\n"
         "<b>\U0001f913Russian equivalent:</b> [closest equivalent in Russian]\n\n"
         "<b>\U0001f58aExamples:</b>\n"
-        "1. [REAL sentence with <u><b>TARGET</b></u>]\n"
-        "2. [REAL sentence with <u><b>TARGET</b></u>]\n"
-        "3. [REAL sentence with <u><b>TARGET</b></u>]\n\n"
+        "1. [REAL sentence with TARGET formatted as above]\n"
+        "2. [REAL sentence with TARGET formatted as above]\n"
+        "3. [REAL sentence with TARGET formatted as above]\n\n"
         "The phrase to explain: TARGET"
     ).replace("TARGET", target) + hint
+
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     message = client.messages.create(
         model="claude-opus-4-5",
-        max_tokens=1024,
+        max_tokens=1536,
         messages=[{"role": "user", "content": prompt}]
     )
     text = message.content[0].text
+    text = text.replace("**", "").replace("__", "")
+
     if photo:
         file = await context.bot.get_file(photo.file_id)
         photo_bytes = await file.download_as_bytearray()
@@ -59,7 +167,11 @@ async def handle_message(update, context):
             chat_id=GROUP_ID,
             message_thread_id=TOPIC_ID,
             photo=bytes(photo_bytes),
-            caption=text,
+        )
+        await context.bot.send_message(
+            chat_id=GROUP_ID,
+            message_thread_id=TOPIC_ID,
+            text=text,
             parse_mode="HTML"
         )
     else:
@@ -69,8 +181,43 @@ async def handle_message(update, context):
             text=text,
             parse_mode="HTML"
         )
-    await update.message.reply_text("✅ Отправлено в группу!")
+
+    await update.message.reply_text("✅ Отправлено в Speak&Teach!")
+
+async def handle_callback(update, context):
+    query = update.callback_query
+    await query.answer()
+
+    user_id = query.from_user.id
+
+    if query.data.startswith("gapfill_"):
+        group_name = query.data.replace("gapfill_", "")
+        group = GAP_FILL_GROUPS[group_name]
+
+        if user_id not in pending_gapfill:
+            await query.edit_message_text("Что-то пошло не так, попробуй снова.")
+            return
+
+        gapfill_text = pending_gapfill.pop(user_id)
+        doc_url = group["doc_url"]
+
+        full_text = (
+            f"{gapfill_text}\n\n"
+            f"\U0001f4ce <a href='{doc_url}'>OUR LANGUAGE BOX</a>"
+        )
+
+        await context.bot.send_message(
+            chat_id=group["chat_id"],
+            message_thread_id=group["thread_id"],
+            text=full_text,
+            parse_mode="HTML"
+        )
+
+        await query.edit_message_text(f"✅ Отправлено в {group_name}!")
+
 app = ApplicationBuilder().token(os.environ["TELEGRAM_TOKEN"]).build()
+app.add_handler(CommandHandler("gap_fill", handle_gapfill_command))
 app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
 app.add_handler(MessageHandler(filters.PHOTO, handle_message))
+app.add_handler(CallbackQueryHandler(handle_callback))
 app.run_polling()
