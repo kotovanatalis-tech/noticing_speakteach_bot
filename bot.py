@@ -77,6 +77,8 @@ async def handle_message(update, context):
             "- Place the answer AS A SPOILER directly in the sentence where the gap would be\n"
             "- Do NOT put ___ — instead put the spoiler tag with the answer right there\n"
             "- Wrap the answer in: <tg-spoiler><b>answer</b></tg-spoiler>\n"
+            "- On the next line after each sentence add a short hint in italic: <i>(brief definition or hint)</i>\n"
+            "- After the hint add an empty line before the next sentence\n"
             "- Shuffle sentences in random order\n"
             "- Use ONLY HTML formatting, never markdown\n"
             "- Double-check grammar — every sentence must be 100% correct\n"
@@ -89,8 +91,11 @@ async def handle_message(update, context):
             "Format exactly like this:\n"
             "<b>\U0001f5c2 Topic: Small Talk</b>\n\n"
             "1. Please <tg-spoiler><b>go easy on</b></tg-spoiler> her — she is going through a difficult time.\n"
+            "<i>(to be less strict or demanding with someone)</i>\n\n"
             "2. His rude comment was <tg-spoiler><b>the last straw</b></tg-spoiler> — I finally quit the project.\n"
-            "3. The company is <tg-spoiler><b>hanging by a thread</b></tg-spoiler> after losing its biggest client.\n\n"
+            "<i>(the final problem that makes a situation unbearable)</i>\n\n"
+            "3. The company is <tg-spoiler><b>hanging by a thread</b></tg-spoiler> after losing its biggest client.\n"
+            "<i>(in a very dangerous or uncertain situation)</i>\n\n"
             "Output ONLY the topic line and numbered list, nothing else."
         )
 
