@@ -1,6 +1,5 @@
 import os
 import re
-import random
 import base64
 import anthropic
 from telegram import Update, InlineKeyboardButton, InlineKeyboardMarkup
@@ -59,7 +58,6 @@ async def handle_message(update, context):
 
         await update.message.reply_text("⏳ Генерирую gap-fill...")
 
-        # Скачиваем фото и конвертируем в base64
         file = await context.bot.get_file(photo.file_id)
         photo_bytes = await file.download_as_bytearray()
         image_b64 = base64.b64encode(photo_bytes).decode("utf-8")
@@ -69,17 +67,22 @@ async def handle_message(update, context):
         gapfill_prompt = (
             "You are an English teacher assistant. "
             "Look at this image with a list of vocabulary items. "
-            "Extract all vocabulary items that are written in BOLD. "
-            "Then create a gap-fill exercise:\n\n"
+            "First, find the TOPIC of the lesson — it is usually written in bold and highlighted. "
+            "Then extract all vocabulary items that are written in BOLD. "
+            "Create a gap-fill exercise:\n\n"
             "RULES:\n"
+            "- Start with the topic on the first line: <b>Topic: [topic]</b>\n"
+            "- Then add an empty line\n"
             "- Create one sentence per vocabulary item\n"
             "- Replace the target word/phrase with ___\n"
             "- Put the answer in a Telegram spoiler tag: <tg-spoiler>answer</tg-spoiler>\n"
             "- Shuffle the sentences in random order (NOT the same order as in the image)\n"
             "- Use ONLY HTML formatting, never markdown\n\n"
-            "Format each item exactly like this:\n"
-            "1. She was completely ___ after the long meeting. <tg-spoiler>worn out</tg-spoiler>\n\n"
-            "Output ONLY the numbered list, nothing else."
+            "Format exactly like this:\n"
+            "<b>\U0001f5c2 Topic: Small Talk</b>\n\n"
+            "1. She was completely ___ after the long meeting. <tg-spoiler>worn out</tg-spoiler>\n"
+            "2. He managed to ___ the situation. <tg-spoiler>defuse</tg-spoiler>\n\n"
+            "Output ONLY the topic line and numbered list, nothing else."
         )
 
         message = client.messages.create(
@@ -203,7 +206,7 @@ async def handle_callback(update, context):
 
         full_text = (
             f"{gapfill_text}\n\n"
-            f"\U0001f4ce <a href='{doc_url}'>OUR LANGUAGE BOX</a>"
+            f"\U0001f4ce <b>OUR LANGUAGE BOX</b>\n<a href='{doc_url}'>CLICK HERE</a>"
         )
 
         await context.bot.send_message(
