@@ -70,7 +70,11 @@ async def handle_message(update, context):
             chat_id=GROUP_ID,
             message_thread_id=TOPIC_ID,
             photo=bytes(photo_bytes),
-            caption=text,
+        )
+        await context.bot.send_message(
+            chat_id=GROUP_ID,
+            message_thread_id=TOPIC_ID,
+            text=text,
             parse_mode="HTML"
         )
     else:
