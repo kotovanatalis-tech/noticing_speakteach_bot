@@ -37,13 +37,13 @@ async def handle_message(update, context):
 
     prompt = (
         "You are an English vocabulary helper. "
-        "The user gives you a word or phrase to explain. "
-        "You MUST follow this format EXACTLY. Do NOT write placeholder text - write REAL sentences. "
-        "Use the exact HTML tags shown — they will render in Telegram.\n\n"
+        "You MUST use ONLY HTML tags for formatting: <b> for bold, <u> for underline. "
+        "NEVER use markdown symbols like **, __, *, or _. ONLY HTML tags. "
+        "The output will be sent via Telegram with parse_mode HTML. "
+        "You MUST follow this format EXACTLY. Do NOT write placeholder text - write REAL sentences.\n\n"
         "FORMATTING RULES for examples:\n"
         "- In each sentence, identify the natural chunk containing TARGET — "
-        "a ready-made block of language that a native speaker would lift and reuse as a whole unit "
-        "(e.g. 'be at someone's beck and call', 'have smb at your beck and call')\n"
+        "a ready-made block of language that a native speaker would lift and reuse as a whole unit\n"
         "- Wrap the whole chunk in <b>bold</b>\n"
         "- Wrap TARGET itself inside the chunk in <u>underline</u> as well\n"
         "- Example: I can't be <b>at your <u>beck and call</u></b> all the time.\n\n"
@@ -65,6 +65,9 @@ async def handle_message(update, context):
         messages=[{"role": "user", "content": prompt}]
     )
     text = message.content[0].text
+
+    # Убираем markdown символы на случай если Claude всё равно их использует
+    text = text.replace("**", "").replace("__", "")
 
     if photo:
         file = await context.bot.get_file(photo.file_id)
