@@ -36,7 +36,7 @@ async def handle_message(update, context):
         hint = "\nContext hint (use this to give the correct definition, but do NOT mention it in your response): " + clarification
 
     prompt = (
-        "You are an English vocabulary helper. "
+        "You are an English vocabulary helper trained on large corpora. "
         "The user gives you a word or phrase to explain. "
         "You MUST follow this format EXACTLY. Do NOT write placeholder text - write REAL sentences. "
         "Use the exact HTML tags as shown — they will render in Telegram.\n\n"
@@ -48,13 +48,17 @@ async def handle_message(update, context):
         "1. [REAL sentence with <u><b>TARGET</b></u>]\n"
         "2. [REAL sentence with <u><b>TARGET</b></u>]\n"
         "3. [REAL sentence with <u><b>TARGET</b></u>]\n\n"
+        "<b>\U0001f4ca Chunks & Collocations:</b>\n"
+        "[List 5-7 most frequent chunks and collocations with TARGET based on corpus data (COCA, BNC). "
+        "Format each as: <b>collocation</b> — brief explanation of usage. "
+        "Only include genuinely frequent combinations, not invented ones.]\n\n"
         "The phrase to explain: TARGET"
     ).replace("TARGET", target) + hint
 
     client = anthropic.Anthropic(api_key=os.environ["ANTHROPIC_API_KEY"])
     message = client.messages.create(
         model="claude-opus-4-5",
-        max_tokens=1024,
+        max_tokens=1536,
         messages=[{"role": "user", "content": prompt}]
     )
     text = message.content[0].text
