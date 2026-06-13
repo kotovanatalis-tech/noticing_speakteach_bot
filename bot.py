@@ -7,6 +7,8 @@ GROUP_ID = -1001412965575
 TOPIC_ID = 205
 ALLOWED_USER_ID = 555619608
 async def handle_message(update, context):
+    if update.message:
+        print(f"chat_id: {update.message.chat.id}, thread_id: {update.message.message_thread_id}")
     if not update.message:
         return
     if update.message.chat.type != "private":
